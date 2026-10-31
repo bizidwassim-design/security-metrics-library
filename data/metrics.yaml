@@ -1,0 +1,1049 @@
+# Security Metrics & KPI Library
+# One entry per metric. All values are examples; targets are illustrative, not benchmarks.
+#
+# Fields
+#   id            stable identifier  <CATEGORY>-<nn>
+#   name          short name used in dashboards
+#   category      governance | identity | vulnerability | endpoint | detection-response | awareness | third-party | cloud | ai
+#   type          leading (predicts future risk) | lagging (measures what already happened)
+#   definition    what the number means, in one or two sentences
+#   formula       how to compute it
+#   unit          % | days | hours | count | ratio | score
+#   direction     higher | lower   (which way is better)
+#   data_source   where the raw numbers come from (generic tool classes, not products)
+#   frequency     how often to measure and report
+#   target_example   illustrative target as text
+#   target_value     the same target as a number (used by scripts/trend_report.py)
+#   audience      any of board | ciso | ops
+#   frameworks    identifiers only: NIST CSF 2.0 subcategories, ISO/IEC 27001:2022 Annex A controls, CIS Controls v8 safeguards
+#   pitfalls      ways the metric is misread or gamed
+#   board         (optional) rank and narrative for docs/board-pack.md
+
+metrics:
+
+  # ------------------------------------------------------------------ governance
+  - id: GOV-01
+    name: Policy review currency
+    category: governance
+    type: leading
+    definition: Share of information-security policies and standards that have been reviewed and approved within their review period (usually 12 months).
+    formula: policies reviewed within period / total policies in the policy register x 100
+    unit: "%"
+    direction: higher
+    data_source: Policy register (GRC tool or document management)
+    frequency: Quarterly
+    target_example: ">= 95 %"
+    target_value: 95
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [GV.PO-01, GV.PO-02]
+      iso27001: [A.5.1]
+      cis_v8: []
+    pitfalls:
+      - Rubber-stamp reviews that change a date and nothing else.
+      - Counting drafts as policies inflates the denominator.
+
+  - id: GOV-02
+    name: Risk treatment actions overdue
+    category: governance
+    type: lagging
+    definition: Number of risk-treatment actions in the risk register whose target date has passed without closure.
+    formula: count of open actions with target date < today
+    unit: count
+    direction: lower
+    data_source: Risk register
+    frequency: Monthly
+    target_example: "0 overdue on High or Critical risks; <= 5 in total"
+    target_value: 5
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [GV.RM-06, ID.RA-06]
+      iso27001: [A.5.1, A.5.4]
+      cis_v8: []
+    pitfalls:
+      - Moving target dates instead of closing actions hides the backlog; also track date changes.
+      - Weight by risk rating, or one overdue Critical looks like one overdue Low.
+
+  - id: GOV-03
+    name: Control coverage against framework
+    category: governance
+    type: leading
+    definition: Share of applicable framework controls (for example ISO/IEC 27001 Annex A or CIS v8 IG2) assessed as implemented and evidenced.
+    formula: controls implemented with evidence / applicable controls x 100
+    unit: "%"
+    direction: higher
+    data_source: Control assessment or Statement of Applicability
+    frequency: Quarterly
+    target_example: ">= 85 % implemented, 100 % of Critical-priority controls"
+    target_value: 85
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [GV.OV-01, GV.OV-03]
+      iso27001: [A.5.36]
+      cis_v8: []
+    pitfalls:
+      - Self-assessed 'implemented' without evidence is opinion, not coverage.
+      - A single percentage hides which domains are weak; show the breakdown.
+    board:
+      rank: 8
+      narrative: Tells the board how much of the chosen security framework is actually in place and evidenced. Movement is slow by nature; a flat line is normal, a drop means controls were removed or evidence lapsed.
+
+  - id: GOV-04
+    name: Audit findings open past due
+    category: governance
+    type: lagging
+    definition: Internal and external audit findings (security scope) that remain open after their agreed remediation date.
+    formula: count of open findings with due date < today
+    unit: count
+    direction: lower
+    data_source: Audit tracker
+    frequency: Monthly
+    target_example: "0 past due; all findings have an owner and a date"
+    target_value: 0
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [GV.OV-02, ID.IM-01]
+      iso27001: [A.5.35, A.5.36]
+      cis_v8: []
+    pitfalls:
+      - Closing a finding on a promise rather than on evidence.
+      - Repeat findings should count more than new ones.
+
+  - id: GOV-05
+    name: Asset inventory completeness
+    category: governance
+    type: leading
+    definition: Share of discovered devices and applications that have a named owner and a classification in the inventory.
+    formula: inventory items with owner and classification / items discovered by network, EDR and SaaS discovery x 100
+    unit: "%"
+    direction: higher
+    data_source: CMDB or asset inventory reconciled against EDR, network discovery and SaaS discovery
+    frequency: Monthly
+    target_example: ">= 95 %"
+    target_value: 95
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.AM-01, ID.AM-02, ID.AM-05]
+      iso27001: [A.5.9, A.5.12]
+      cis_v8: ["1.1", "2.1"]
+    pitfalls:
+      - Only measuring against what the inventory already knows; the denominator must come from discovery.
+      - Owners that have left the company still count as owners unless you reconcile with HR.
+
+  # ------------------------------------------------------------------ identity
+  - id: IDN-01
+    name: MFA coverage (all users)
+    category: identity
+    type: leading
+    definition: Share of enabled user accounts that must complete multi-factor authentication to sign in to corporate applications.
+    formula: enabled users with MFA enforced / enabled users x 100
+    unit: "%"
+    direction: higher
+    data_source: Identity provider sign-in and authentication-method reports
+    frequency: Monthly
+    target_example: ">= 99 %"
+    target_value: 99
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-03]
+      iso27001: [A.5.17, A.8.5]
+      cis_v8: ["6.3", "6.4"]
+    pitfalls:
+      - "Registered is not enforced; count accounts where a policy requires MFA."
+      - Legacy authentication protocols can bypass MFA; pair with a legacy-auth sign-in count.
+      - Excluded accounts (break-glass, service) must be listed, not hidden.
+    board:
+      rank: 1
+      narrative: The single control that most reduces account takeover. Anything below 99 % means some accounts can be taken with a password alone. Ask what the exceptions are and when they end.
+
+  - id: IDN-02
+    name: Phishing-resistant MFA for privileged roles
+    category: identity
+    type: leading
+    definition: Share of accounts holding administrative roles that are required to use a phishing-resistant method (FIDO2 key, passkey or certificate).
+    formula: admin accounts with phishing-resistant method enforced / admin accounts x 100
+    unit: "%"
+    direction: higher
+    data_source: Identity provider role assignments and authentication-strength policies
+    frequency: Monthly
+    target_example: "100 %"
+    target_value: 100
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-03, PR.AA-05]
+      iso27001: [A.8.2, A.8.5]
+      cis_v8: ["6.5"]
+    pitfalls:
+      - Eligible (just-in-time) role holders must be included, not only permanently active ones.
+      - A method that is available but not required by policy does not count.
+
+  - id: IDN-03
+    name: Privileged accounts per administrator
+    category: identity
+    type: leading
+    definition: Number of accounts holding high-privilege roles (global, domain, cloud-owner equivalents) relative to the number of people who need them.
+    formula: accounts with high-privilege roles / people with an approved admin role
+    unit: ratio
+    direction: lower
+    data_source: Identity provider, directory, cloud IAM
+    frequency: Monthly
+    target_example: "<= 1.2 and absolute count trending down"
+    target_value: 1.2
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-05]
+      iso27001: [A.8.2, A.5.18]
+      cis_v8: ["5.4"]
+    pitfalls:
+      - Service principals and automation identities with admin rights are often forgotten.
+      - Ratio alone hides a large absolute number; report both.
+
+  - id: IDN-04
+    name: Dormant accounts
+    category: identity
+    type: leading
+    definition: Enabled accounts (user and service) with no successful sign-in in the last 90 days.
+    formula: enabled accounts with last sign-in > 90 days ago (count and % of enabled accounts)
+    unit: count
+    direction: lower
+    data_source: Identity provider sign-in logs, directory last-logon attributes
+    frequency: Monthly
+    target_example: "< 1 % of enabled accounts; 0 with privileged roles"
+    target_value: 10
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-01, PR.AA-05]
+      iso27001: [A.5.16, A.5.18]
+      cis_v8: ["5.3"]
+    pitfalls:
+      - Shared mailboxes and room resources appear dormant by design; exclude them explicitly.
+      - Disabling without deleting leaves tokens and group memberships; track the full lifecycle.
+
+  - id: IDN-05
+    name: Leaver de-provisioning time
+    category: identity
+    type: lagging
+    definition: Time between the HR-recorded leaving date (or termination notice) and the disabling of all the leaver's accounts.
+    formula: median hours from leave date to last account disabled, over leavers in the period
+    unit: hours
+    direction: lower
+    data_source: HR system export joined with identity provider audit log
+    frequency: Monthly
+    target_example: "<= 24 hours (same day for involuntary leavers)"
+    target_value: 24
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-01, PR.AA-05]
+      iso27001: [A.5.16, A.6.5]
+      cis_v8: ["5.3", "6.2"]
+    pitfalls:
+      - Only measuring the directory account; SaaS applications with local accounts are the usual leak.
+      - Median hides the one leaver still enabled after 60 days; also report the maximum.
+
+  - id: IDN-06
+    name: Access review completion
+    category: identity
+    type: leading
+    definition: Share of scheduled periodic access reviews (privileged roles, sensitive groups, key applications) completed by their due date, with decisions recorded.
+    formula: reviews completed on time / reviews scheduled x 100
+    unit: "%"
+    direction: higher
+    data_source: Identity governance tool or review tracker
+    frequency: Quarterly
+    target_example: ">= 95 %, with at least some revocations"
+    target_value: 95
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-05]
+      iso27001: [A.5.18]
+      cis_v8: ["5.1", "6.8"]
+    pitfalls:
+      - A review that approves 100 % of access in seconds is not a review; track the revocation rate too.
+      - Auto-approval on timeout counts as complete in some tools; exclude it.
+
+  - id: IDN-07
+    name: Service accounts with non-expiring credentials
+    category: identity
+    type: leading
+    definition: Service accounts, API keys and application secrets whose credential has no expiry or is older than the policy maximum.
+    formula: count of credentials with no expiry or age > policy maximum
+    unit: count
+    direction: lower
+    data_source: Directory, cloud IAM, secrets vault, application registrations
+    frequency: Monthly
+    target_example: "0 older than 12 months; all in a vault"
+    target_value: 0
+    audience: [ops]
+    frameworks:
+      nist_csf: [PR.AA-01, PR.AA-02]
+      iso27001: [A.5.17, A.8.2]
+      cis_v8: ["5.2", "5.4"]
+    pitfalls:
+      - Rotating the password but keeping the old one valid in a second application.
+      - Secrets embedded in code are invisible to this metric; pair with a secrets-scanning count.
+
+  # ------------------------------------------------------------------ vulnerability
+  - id: VUL-01
+    name: Critical vulnerabilities remediated within SLA
+    category: vulnerability
+    type: lagging
+    definition: Share of critical-severity vulnerabilities (by your internal rating, which should include exploit availability) that were fixed or compensated within the policy SLA.
+    formula: critical vulnerabilities closed within SLA / critical vulnerabilities due in the period x 100
+    unit: "%"
+    direction: higher
+    data_source: Vulnerability scanner, ticketing system
+    frequency: Monthly
+    target_example: ">= 90 % within 14 days"
+    target_value: 90
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [ID.RA-01, ID.RA-08, PR.PS-02]
+      iso27001: [A.8.8]
+      cis_v8: ["7.1", "7.2", "7.4"]
+    pitfalls:
+      - Re-rating vulnerabilities to High to meet the Critical SLA; audit severity changes.
+      - "Risk accepted must be a visible category with an expiry, not a way to close."
+    board:
+      rank: 2
+      narrative: Of the most dangerous known weaknesses, how many did we fix in time. Below target means attackers have a window we have published ourselves. Ask whether the misses are concentrated on a few systems or a few teams.
+
+  - id: VUL-02
+    name: Mean time to remediate critical vulnerabilities
+    category: vulnerability
+    type: lagging
+    definition: Average number of days between first detection and verified remediation of critical vulnerabilities closed in the period.
+    formula: sum of (closed date - first seen date) / critical vulnerabilities closed in the period
+    unit: days
+    direction: lower
+    data_source: Vulnerability scanner
+    frequency: Monthly
+    target_example: "<= 14 days"
+    target_value: 14
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.RA-08, PR.PS-02]
+      iso27001: [A.8.8]
+      cis_v8: ["7.3", "7.4"]
+    pitfalls:
+      - Only closed items count, so a growing backlog of very old items makes the mean look better.
+      - Use the scanner's first-seen date, not the ticket creation date.
+
+  - id: VUL-03
+    name: Known-exploited vulnerabilities on internet-facing assets
+    category: vulnerability
+    type: leading
+    definition: Number of vulnerabilities listed in a known-exploited catalogue that are currently open on assets reachable from the internet.
+    formula: count of open findings on external assets matching the known-exploited list
+    unit: count
+    direction: lower
+    data_source: External attack-surface scanning, vulnerability scanner, known-exploited vulnerability catalogue
+    frequency: Weekly
+    target_example: "0 older than 72 hours"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.RA-01, ID.RA-02, PR.PS-02]
+      iso27001: [A.8.8, A.5.7]
+      cis_v8: ["7.5", "7.7"]
+    pitfalls:
+      - Depends entirely on the external asset list being complete; pair with VUL-06.
+      - A vulnerability behind a WAF rule is mitigated, not fixed; show both states.
+
+  - id: VUL-04
+    name: Vulnerability scan coverage
+    category: vulnerability
+    type: leading
+    definition: Share of in-scope assets (servers, workstations, containers, cloud resources) that were successfully scanned, with credentials where applicable, in the last cycle.
+    formula: assets scanned with authenticated or agent-based scan in period / in-scope assets x 100
+    unit: "%"
+    direction: higher
+    data_source: Vulnerability scanner reconciled against the asset inventory
+    frequency: Monthly
+    target_example: ">= 98 %"
+    target_value: 98
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.RA-01, ID.AM-01]
+      iso27001: [A.8.8]
+      cis_v8: ["7.5", "7.6"]
+    pitfalls:
+      - Unauthenticated scans find a fraction of the issues; count them separately.
+      - The denominator must come from the inventory (GOV-05), not from the scanner itself.
+
+  - id: VUL-05
+    name: Median age of open high and critical vulnerabilities
+    category: vulnerability
+    type: leading
+    definition: Median number of days since first detection across all currently open high and critical vulnerabilities.
+    formula: median(today - first seen date) over open high and critical findings
+    unit: days
+    direction: lower
+    data_source: Vulnerability scanner
+    frequency: Monthly
+    target_example: "<= 30 days"
+    target_value: 30
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.RA-08]
+      iso27001: [A.8.8]
+      cis_v8: ["7.2"]
+    pitfalls:
+      - Mass-closing stale findings without a fix resets the clock; require verification scans.
+      - "Complements VUL-02: VUL-02 looks at what was fixed, VUL-05 at what is still open."
+
+  - id: VUL-06
+    name: Unexpected internet-exposed services
+    category: vulnerability
+    type: leading
+    definition: Services reachable from the internet that are not on the approved exposure list (unknown hosts, open management ports, forgotten test systems).
+    formula: count of external services discovered minus services on the approved list
+    unit: count
+    direction: lower
+    data_source: External attack-surface management, cloud configuration export, firewall rules
+    frequency: Weekly
+    target_example: "0 unapproved; every finding triaged within 48 hours"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.AM-01, ID.AM-03, PR.IR-01]
+      iso27001: [A.8.20, A.8.22, A.5.9]
+      cis_v8: ["12.2", "13.1", "4.4"]
+    pitfalls:
+      - Adding every discovery to the approved list to reach zero defeats the purpose; approvals need an owner.
+      - Scan from outside your own network, otherwise you measure your firewall's view of itself.
+
+  # ------------------------------------------------------------------ endpoint
+  - id: END-01
+    name: EDR coverage
+    category: endpoint
+    type: leading
+    definition: Share of in-scope endpoints and servers running a healthy endpoint detection and response agent that reported in the last 7 days.
+    formula: devices with healthy EDR agent reporting in 7 days / devices in inventory x 100
+    unit: "%"
+    direction: higher
+    data_source: EDR console reconciled with asset inventory and directory
+    frequency: Monthly
+    target_example: ">= 98 %"
+    target_value: 98
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [DE.CM-01, DE.CM-09, PR.PS-05]
+      iso27001: [A.8.7, A.8.16]
+      cis_v8: ["10.1", "13.2"]
+    pitfalls:
+      - An installed but non-reporting agent is not coverage; use the last-seen date.
+      - Using the EDR console as its own denominator always gives 100 %.
+    board:
+      rank: 3
+      narrative: How many of our computers and servers are watched by the tool that detects and stops attacks. The gap is where an intrusion would go unseen. Ask which systems are in the gap and why.
+
+  - id: END-02
+    name: Patch compliance (operating system)
+    category: endpoint
+    type: leading
+    definition: Share of managed devices that have installed the current month's operating-system security updates within 30 days of release.
+    formula: devices fully patched within 30 days / managed devices x 100
+    unit: "%"
+    direction: higher
+    data_source: Patch management or device management console
+    frequency: Monthly
+    target_example: ">= 95 % within 30 days"
+    target_value: 95
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.PS-02]
+      iso27001: [A.8.8, A.8.19]
+      cis_v8: ["7.3"]
+    pitfalls:
+      - Devices that have not checked in are often excluded automatically, hiding the worst cases.
+      - Applications and firmware matter too; this metric covers the OS only.
+
+  - id: END-03
+    name: Unsupported operating systems
+    category: endpoint
+    type: leading
+    definition: Devices running an operating system version that no longer receives security updates from the vendor.
+    formula: count of devices with end-of-support OS (and % of managed devices)
+    unit: count
+    direction: lower
+    data_source: Device management, EDR or vulnerability scanner OS inventory
+    frequency: Quarterly
+    target_example: "0 on user devices; servers isolated with a documented exception"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.AM-08, PR.PS-02, PR.PS-03]
+      iso27001: [A.8.8, A.8.9]
+      cis_v8: ["2.2", "2.3"]
+    pitfalls:
+      - Embedded and operational-technology devices are frequently out of scope by omission.
+      - Extended-support contracts delay the problem; track the end date.
+
+  - id: END-04
+    name: Disk encryption coverage
+    category: endpoint
+    type: leading
+    definition: Share of laptops and mobile devices with full-disk encryption enforced and recovery keys escrowed.
+    formula: devices with encryption enforced and key escrowed / portable devices x 100
+    unit: "%"
+    direction: higher
+    data_source: Device management console
+    frequency: Quarterly
+    target_example: "100 %"
+    target_value: 100
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.DS-01]
+      iso27001: [A.8.24, A.7.9]
+      cis_v8: ["3.6"]
+    pitfalls:
+      - Encrypted without an escrowed key becomes a data-loss incident at the first forgotten PIN.
+      - Personal devices with corporate data under a bring-your-own policy are usually unmeasured.
+
+  - id: END-05
+    name: Hardening baseline compliance
+    category: endpoint
+    type: leading
+    definition: Share of managed devices compliant with the organisation's security baseline (configuration profile, attack-surface-reduction rules, local-admin restrictions).
+    formula: devices reporting compliant to all baseline policies / managed devices x 100
+    unit: "%"
+    direction: higher
+    data_source: Device management compliance reports
+    frequency: Monthly
+    target_example: ">= 95 %"
+    target_value: 95
+    audience: [ops]
+    frameworks:
+      nist_csf: [PR.PS-01]
+      iso27001: [A.8.9]
+      cis_v8: ["4.1", "4.7"]
+    pitfalls:
+      - Loosening the baseline to raise compliance; version the baseline and report changes.
+      - Rules in audit mode are not enforcement; report block mode separately.
+
+  # ------------------------------------------------------------------ detection-response
+  - id: DR-01
+    name: Mean time to detect
+    category: detection-response
+    type: lagging
+    definition: Average time between the first malicious activity (as established in the investigation) and the first alert or report that started the response.
+    formula: sum of (first alert time - attacker first activity time) / incidents closed in the period
+    unit: hours
+    direction: lower
+    data_source: Incident records with reconstructed timelines
+    frequency: Quarterly
+    target_example: "<= 24 hours"
+    target_value: 24
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [DE.AE-02, DE.AE-06]
+      iso27001: [A.8.16, A.5.25]
+      cis_v8: ["8.11", "17.4"]
+    pitfalls:
+      - Needs a reconstructed timeline per incident; without one the number is a guess.
+      - Small incident counts make the mean swing wildly; show the number of incidents behind it.
+
+  - id: DR-02
+    name: Mean time to contain
+    category: detection-response
+    type: lagging
+    definition: Average time between an incident being declared and the attacker's access being removed or the affected asset isolated.
+    formula: sum of (containment time - declaration time) / incidents in the period
+    unit: hours
+    direction: lower
+    data_source: Incident records, ticketing timestamps
+    frequency: Quarterly
+    target_example: "<= 4 hours for High and Critical incidents"
+    target_value: 4
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [RS.MA-01, RS.MI-01, RS.MI-02]
+      iso27001: [A.5.26]
+      cis_v8: ["17.4", "17.7"]
+    pitfalls:
+      - Containment is not resolution; a separate metric for full recovery avoids mixing the two.
+      - Mean is dominated by the one weekend incident; report median and maximum alongside.
+    board:
+      rank: 4
+      narrative: Once we know something is wrong, how fast do we cut the attacker off. Hours matter here because damage grows with access time. Ask what the slowest case was and what delayed it.
+
+  - id: DR-03
+    name: Alert triage within SLA
+    category: detection-response
+    type: leading
+    definition: Share of security alerts that received a first analyst action within the time allowed for their severity.
+    formula: alerts triaged within SLA / alerts raised in the period x 100
+    unit: "%"
+    direction: higher
+    data_source: SIEM or SOAR case management
+    frequency: Monthly
+    target_example: ">= 95 % (High within 30 minutes, Medium within 4 hours)"
+    target_value: 95
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [DE.AE-02, RS.MA-02]
+      iso27001: [A.8.16, A.5.25]
+      cis_v8: ["17.4"]
+    pitfalls:
+      - Auto-closing alerts counts as triage in some tools; exclude automated closures.
+      - Tuning noisy rules improves this metric honestly; suppressing them silently does not.
+
+  - id: DR-04
+    name: Log source coverage of critical assets
+    category: detection-response
+    type: leading
+    definition: Share of assets classified as critical whose security logs are received by the SIEM and have been seen in the last 24 hours.
+    formula: critical assets with logs received in 24 hours / critical assets x 100
+    unit: "%"
+    direction: higher
+    data_source: SIEM data-source health, asset inventory
+    frequency: Monthly
+    target_example: "100 %"
+    target_value: 100
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [DE.CM-01, DE.CM-09, PR.PS-04]
+      iso27001: [A.8.15, A.8.16]
+      cis_v8: ["8.2", "8.5", "8.9"]
+    pitfalls:
+      - Receiving logs is not the same as parsing them; a broken parser gives a green light and no detections.
+      - Identity and SaaS logs are as critical as server logs and more often missing.
+
+  - id: DR-05
+    name: False-positive rate
+    category: detection-response
+    type: leading
+    definition: Share of security alerts closed as benign or false positive after analyst review.
+    formula: alerts closed as false positive / alerts reviewed x 100
+    unit: "%"
+    direction: lower
+    data_source: SIEM or SOAR case outcomes
+    frequency: Monthly
+    target_example: "<= 60 % overall; <= 20 % for High-severity rules"
+    target_value: 60
+    audience: [ops]
+    frameworks:
+      nist_csf: [DE.AE-02, ID.IM-03]
+      iso27001: [A.8.16]
+      cis_v8: ["8.11"]
+    pitfalls:
+      - Driving the rate to zero usually means detections were removed, not improved.
+      - Classify 'benign true positive' (expected activity that matched) separately from 'false positive'.
+
+  - id: DR-06
+    name: Security incidents by severity
+    category: detection-response
+    type: lagging
+    definition: Number of confirmed security incidents declared in the period, broken down by severity level.
+    formula: count of incidents per severity in the period
+    unit: count
+    direction: lower
+    data_source: Incident register
+    frequency: Monthly
+    target_example: "0 Critical; trend of High and Medium flat or down"
+    target_value: 0
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [RS.MA-03, GV.OV-01]
+      iso27001: [A.5.24, A.5.27]
+      cis_v8: ["17.1", "17.9"]
+    pitfalls:
+      - A rising count after better detection is good news; present it with DR-04 and DR-07.
+      - Severity definitions must be written down or the mix shifts with whoever is on shift.
+    board:
+      rank: 5
+      narrative: What actually happened. The number of Critical incidents should be zero; a rise in lower severities often means detection improved. Ask for the one-line story of each High or Critical.
+
+  - id: DR-07
+    name: Detection coverage of priority techniques
+    category: detection-response
+    type: leading
+    definition: Share of the organisation's priority list of adversary techniques (for example 30 MITRE ATT&CK techniques chosen from threat modelling) that have at least one tested detection.
+    formula: priority techniques with a validated detection / priority techniques x 100
+    unit: "%"
+    direction: higher
+    data_source: Detection engineering backlog, ATT&CK mapping of rules, purple-team results
+    frequency: Quarterly
+    target_example: ">= 80 %"
+    target_value: 80
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [DE.CM-01, ID.IM-02]
+      iso27001: [A.8.16, A.5.7]
+      cis_v8: ["8.11", "17.2"]
+    pitfalls:
+      - A rule that exists but has never fired or been tested is not coverage; require a test record.
+      - Coverage of the whole ATT&CK matrix is a vanity number; use a prioritised list.
+
+  - id: DR-08
+    name: Incident exercises completed
+    category: detection-response
+    type: leading
+    definition: Number of tabletop or technical incident-response exercises run in the period, with actions tracked to closure.
+    formula: exercises completed in period (and share of resulting actions closed)
+    unit: count
+    direction: higher
+    data_source: Exercise reports, action tracker
+    frequency: Quarterly
+    target_example: ">= 1 per quarter, including one with executives per year"
+    target_value: 1
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [ID.IM-02, RS.MA-01]
+      iso27001: [A.5.24, A.5.27, A.5.30]
+      cis_v8: ["17.7"]
+    pitfalls:
+      - Exercises with no findings were too easy or not written up honestly.
+      - Count only exercises whose actions are tracked; otherwise it is theatre.
+
+  # ------------------------------------------------------------------ awareness
+  - id: AWR-01
+    name: Phishing simulation click rate
+    category: awareness
+    type: leading
+    definition: Share of recipients who clicked the link or opened the attachment in a simulated phishing campaign.
+    formula: recipients who clicked / emails delivered x 100
+    unit: "%"
+    direction: lower
+    data_source: Phishing simulation platform
+    frequency: Monthly
+    target_example: "<= 5 % (with difficulty level held constant)"
+    target_value: 5
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [PR.AT-01]
+      iso27001: [A.6.3]
+      cis_v8: ["14.2"]
+    pitfalls:
+      - Easier templates lower the rate; record the difficulty level with every campaign.
+      - Punitive follow-up drives under-reporting of real phishing; use AWR-02 as the primary metric.
+    board:
+      rank: 6
+      narrative: How many of us would fall for a convincing fake email. Read it together with the report rate below; a workforce that reports is worth more than one that never clicks. Ask whether the test difficulty changed.
+
+  - id: AWR-02
+    name: Phishing report rate
+    category: awareness
+    type: leading
+    definition: Share of recipients of a simulated phishing email who reported it through the official reporting button or process.
+    formula: recipients who reported / emails delivered x 100
+    unit: "%"
+    direction: higher
+    data_source: Phishing simulation platform, mail reporting add-in
+    frequency: Monthly
+    target_example: ">= 50 %"
+    target_value: 50
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AT-01, DE.AE-02]
+      iso27001: [A.6.3, A.6.8]
+      cis_v8: ["14.2", "14.6"]
+    pitfalls:
+      - Reports after clicking are still valuable; count them but show them separately.
+      - If the reporting button is hard to find, the metric measures the button, not the people.
+
+  - id: AWR-03
+    name: Security training completion
+    category: awareness
+    type: leading
+    definition: Share of staff and contractors who completed the mandatory security awareness training within the required window (at hire and annually).
+    formula: people completed within window / people required x 100
+    unit: "%"
+    direction: higher
+    data_source: Learning management system joined with HR headcount
+    frequency: Quarterly
+    target_example: ">= 97 %"
+    target_value: 97
+    audience: [ciso]
+    frameworks:
+      nist_csf: [PR.AT-01, PR.AT-02]
+      iso27001: [A.6.3]
+      cis_v8: ["14.1", "14.3"]
+    pitfalls:
+      - Completion says nothing about understanding; pair with a short assessment pass rate.
+      - Contractors and long-term leave are usually excluded by accident; define the denominator.
+
+  - id: AWR-04
+    name: Repeat clickers
+    category: awareness
+    type: leading
+    definition: People who clicked in two or more simulated phishing campaigns in the last 12 months.
+    formula: count of people with >= 2 clicks in 12 months (and % of staff)
+    unit: count
+    direction: lower
+    data_source: Phishing simulation platform
+    frequency: Quarterly
+    target_example: "<= 2 % of staff, each with a targeted follow-up"
+    target_value: 2
+    audience: [ciso]
+    frameworks:
+      nist_csf: [PR.AT-01]
+      iso27001: [A.6.3]
+      cis_v8: ["14.2"]
+    pitfalls:
+      - Must be handled with care and never published by name; the metric is for targeting help, not blame.
+      - Roles that receive many external emails (recruiting, finance) click more by exposure; compare within role.
+
+  # ------------------------------------------------------------------ third-party
+  - id: TPR-01
+    name: Tier 1 vendors assessed within cadence
+    category: third-party
+    type: leading
+    definition: Share of critical (Tier 1) vendors with a completed security assessment that is not older than the policy cadence (usually 12 months).
+    formula: Tier 1 vendors with a current assessment / Tier 1 vendors x 100
+    unit: "%"
+    direction: higher
+    data_source: Vendor inventory and assessment register (see the vendor-risk-assessment-template repository)
+    frequency: Quarterly
+    target_example: "100 %"
+    target_value: 100
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [GV.SC-06, GV.SC-07]
+      iso27001: [A.5.19, A.5.22]
+      cis_v8: ["15.1", "15.4", "15.5"]
+    pitfalls:
+      - Re-tiering vendors down to shrink the denominator; review tier changes.
+      - A questionnaire returned is not an assessment completed; require the reviewer's rating.
+    board:
+      rank: 7
+      narrative: Our most critical suppliers, checked on time. A supplier breach is our breach in the eyes of customers and regulators. Ask which critical suppliers are overdue and whether the contract gives us the right to ask.
+
+  - id: TPR-02
+    name: Vendor assessments overdue
+    category: third-party
+    type: lagging
+    definition: Number of vendors (any tier) whose next-review date has passed without a completed re-assessment.
+    formula: count of vendors with next review date < today and no completed assessment since
+    unit: count
+    direction: lower
+    data_source: Assessment register
+    frequency: Monthly
+    target_example: "0 Tier 1; <= 3 overall"
+    target_value: 3
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [GV.SC-07]
+      iso27001: [A.5.22]
+      cis_v8: ["15.5"]
+    pitfalls:
+      - Extending cadences in the policy to clear the backlog; document any cadence change.
+      - Vendors with no assessment at all are not overdue in the formula; count them separately.
+
+  - id: TPR-03
+    name: Critical vendor findings open beyond 90 days
+    category: third-party
+    type: lagging
+    definition: Findings rated High or Critical from vendor assessments that remain open more than 90 days after being agreed with the vendor.
+    formula: count of open High and Critical vendor findings older than 90 days
+    unit: count
+    direction: lower
+    data_source: Assessment register, vendor remediation tracker
+    frequency: Quarterly
+    target_example: "0"
+    target_value: 0
+    audience: [ciso]
+    frameworks:
+      nist_csf: [GV.SC-07, GV.SC-09]
+      iso27001: [A.5.22]
+      cis_v8: ["15.6"]
+    pitfalls:
+      - A finding the vendor disputes is still open; do not close on disagreement.
+      - Compensating controls on your side can justify closure if they are documented.
+
+  - id: TPR-04
+    name: Contracts with required security clauses
+    category: third-party
+    type: leading
+    definition: Share of Tier 1 and Tier 2 vendor contracts that include all clauses marked Required for their tier (security obligations, incident notification, sub-processors, data return).
+    formula: contracts with all required clauses / Tier 1 and Tier 2 contracts x 100
+    unit: "%"
+    direction: higher
+    data_source: Contract register, clause checklist
+    frequency: Quarterly
+    target_example: ">= 90 %, 100 % at next renewal"
+    target_value: 90
+    audience: [ciso]
+    frameworks:
+      nist_csf: [GV.SC-05]
+      iso27001: [A.5.20]
+      cis_v8: ["15.4"]
+    pitfalls:
+      - Legacy contracts cannot be changed until renewal; show the renewal date for the gaps.
+      - A clause present but unenforceable (no audit right, no penalty) is cosmetic.
+
+  # ------------------------------------------------------------------ cloud
+  - id: CLD-01
+    name: High-severity cloud misconfigurations open
+    category: cloud
+    type: leading
+    definition: Number of open high-severity findings from cloud security posture scanning (public buckets, open security groups, missing logging, root keys in use).
+    formula: count of open findings rated High by the posture tool, after agreed exclusions
+    unit: count
+    direction: lower
+    data_source: Cloud security posture management, native cloud security services
+    frequency: Weekly
+    target_example: "0 older than 7 days"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.PS-01, ID.RA-01]
+      iso27001: [A.8.9, A.5.23]
+      cis_v8: ["4.1", "3.3"]
+    pitfalls:
+      - Exclusions become permanent; expire them automatically.
+      - Severity scales differ between tools; normalise before comparing accounts.
+
+  - id: CLD-02
+    name: Publicly accessible storage and databases
+    category: cloud
+    type: leading
+    definition: Storage buckets, file shares and database instances reachable from the internet without authentication.
+    formula: count of storage and database resources with public access enabled
+    unit: count
+    direction: lower
+    data_source: Cloud configuration export, posture management
+    frequency: Weekly
+    target_example: "0 unapproved (approved public assets listed with an owner)"
+    target_value: 0
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [PR.DS-01, PR.IR-01]
+      iso27001: [A.8.3, A.8.20, A.5.23]
+      cis_v8: ["3.3", "12.2"]
+    pitfalls:
+      - Web-hosting buckets are public on purpose; the approved list must distinguish them.
+      - Databases exposed through a management port are missed if you only check storage.
+
+  - id: CLD-03
+    name: Over-privileged cloud identities
+    category: cloud
+    type: leading
+    definition: Cloud users, roles and service principals holding owner or administrator permissions that have not been used in 90 days, or permissions far wider than those used.
+    formula: count of identities with admin-level rights and no admin action in 90 days
+    unit: count
+    direction: lower
+    data_source: Cloud IAM analytics, access analyser, activity logs
+    frequency: Monthly
+    target_example: "0 unused owner-level identities"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [PR.AA-05]
+      iso27001: [A.8.2, A.5.18, A.5.23]
+      cis_v8: ["5.4", "6.8"]
+    pitfalls:
+      - Break-glass accounts are unused by design; exclude them by name and review them separately.
+      - Permissions inherited through groups are often missed by simple role listings.
+
+  - id: CLD-04
+    name: Backup restore test success
+    category: cloud
+    type: leading
+    definition: Share of critical systems for which a restore from backup was tested successfully, within the recovery-time objective, in the last quarter.
+    formula: critical systems with a successful restore test in the quarter / critical systems x 100
+    unit: "%"
+    direction: higher
+    data_source: Backup platform reports, restore-test records
+    frequency: Quarterly
+    target_example: "100 % per year, >= 25 % per quarter on rotation"
+    target_value: 25
+    audience: [board, ciso, ops]
+    frameworks:
+      nist_csf: [PR.DS-11, RC.RP-01, RC.RP-03]
+      iso27001: [A.8.13, A.8.14, A.5.30]
+      cis_v8: ["11.2", "11.3", "11.5"]
+    pitfalls:
+      - A successful backup job is not a successful restore; only restores count.
+      - Immutable or offline copies should be a separate yes/no per system, or ransomware makes the metric meaningless.
+    board:
+      rank: 9
+      narrative: Could we actually come back from a destructive attack. A tested restore within the agreed time is the only real proof. Ask which critical systems have never been restore-tested.
+
+  # ------------------------------------------------------------------ ai
+  - id: AI-01
+    name: AI systems inventoried
+    category: ai
+    type: leading
+    definition: Share of AI systems in use (built, bought or embedded in SaaS) that are recorded in the AI inventory with an owner, purpose and data used.
+    formula: AI systems in inventory with owner and purpose / AI systems discovered x 100
+    unit: "%"
+    direction: higher
+    data_source: AI inventory reconciled with SaaS discovery, procurement and the vendor register
+    frequency: Quarterly
+    target_example: ">= 90 %"
+    target_value: 90
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.AM-01, ID.AM-02, GV.SC-04]
+      iso27001: [A.5.9]
+      cis_v8: ["2.1"]
+    pitfalls:
+      - The denominator needs discovery (network, SaaS, browser extensions); the inventory cannot be its own reference.
+      - AI features switched on inside existing SaaS tools are the usual blind spot.
+
+  - id: AI-02
+    name: AI systems with a completed impact assessment
+    category: ai
+    type: leading
+    definition: Share of AI systems rated medium or high impact that have a completed and approved AI impact assessment (risks to individuals, bias, data, misuse) before production use.
+    formula: AI systems with approved impact assessment / AI systems rated medium or high impact x 100
+    unit: "%"
+    direction: higher
+    data_source: AI inventory, impact-assessment register
+    frequency: Quarterly
+    target_example: "100 % before go-live"
+    target_value: 100
+    audience: [board, ciso]
+    frameworks:
+      nist_csf: [GV.RM-01, ID.RA-01]
+      iso27001: [A.5.34]
+      cis_v8: []
+    pitfalls:
+      - Assessments done after go-live still count but should be flagged; the point is before.
+      - Rating everything 'low impact' empties the denominator; sample the low-impact list.
+    board:
+      rank: 10
+      narrative: Whether the AI we use on customers and staff was checked for harm, bias and data leakage before it went live. This is the new regulatory expectation. Ask which systems went live without one and why.
+
+  - id: AI-03
+    name: Unapproved AI applications in use
+    category: ai
+    type: leading
+    definition: Number of distinct AI applications or services observed in use (web proxy, SaaS discovery, browser extensions) that are not on the approved list.
+    formula: count of distinct AI services observed minus services on the approved list
+    unit: count
+    direction: lower
+    data_source: Web proxy or secure web gateway, SaaS discovery, endpoint browser-extension inventory
+    frequency: Monthly
+    target_example: "Trend down; each new service triaged within 30 days"
+    target_value: 5
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [ID.AM-02, PR.DS-01, GV.SC-04]
+      iso27001: [A.5.9, A.8.12]
+      cis_v8: ["2.3", "2.5"]
+    pitfalls:
+      - Blocking everything drives usage to personal devices; pair with an approved alternative.
+      - Count services, not users, or one popular tool dominates the number.
+
+  - id: AI-04
+    name: AI incidents and model-monitoring alerts
+    category: ai
+    type: lagging
+    definition: Confirmed incidents involving an AI system (data leakage through prompts, harmful output, prompt injection, model drift beyond threshold) in the period.
+    formula: count of AI-related incidents and triggered monitoring alerts per period
+    unit: count
+    direction: lower
+    data_source: Incident register (AI tag), model monitoring, AI gateway logs
+    frequency: Monthly
+    target_example: "0 confirmed data-leakage incidents; all alerts triaged"
+    target_value: 0
+    audience: [ciso, ops]
+    frameworks:
+      nist_csf: [DE.AE-02, RS.MA-03]
+      iso27001: [A.5.24, A.8.16]
+      cis_v8: ["17.1"]
+    pitfalls:
+      - Without an AI tag in the incident process these incidents are filed as data leaks and never counted.
+      - A monitoring threshold that never fires is probably set wrong, not a sign of a stable model.

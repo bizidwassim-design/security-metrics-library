@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Parse the scripts
+        run: python -m py_compile scripts/build_catalogue.py scripts/trend_report.py tests/test_library.py
+      - name: Validate the library and rebuild the catalogue, board pack and CSV
+        run: python scripts/build_catalogue.py
+      - name: Rebuild the sample trend report
+        run: python scripts/trend_report.py
+      - name: Generated files must match the committed ones
+        run: git diff --exit-code -- docs/catalogue.md docs/board-pack.md data/metrics.csv examples/trend-report.md
+      - name: Run the tests
+        run: python -m unittest discover -s tests -v
