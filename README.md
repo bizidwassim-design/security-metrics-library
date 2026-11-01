@@ -122,6 +122,13 @@ New metrics, sharper pitfalls, corrected framework identifiers and translations 
 Targets and sample values are illustrative. A metric is only as good as its denominator and its owner; this library
 gives you definitions, not assurance. It does not replace a risk assessment, an audit or professional judgement.
 
+## AI assistance
+
+Built with Claude Code as a coding and writing assistant, which is why it appears as a co-author on some commits.
+**Editor and reviewer: Wassim Bizid**, who set the scope, the frameworks and the GRC approach, edited the content
+and decided what was published. Automated tests in CI check the published outputs. This is a maintainer review,
+not an independent one.
+
 ## License
 
 [MIT](LICENSE) — free to use, copy, modify and redistribute.
